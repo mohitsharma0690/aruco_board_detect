@@ -79,6 +79,7 @@ class ArucoDetector
 					#endif
 
 					markers.push_back(marker);
+					marker.print();
 				}
 			}
 

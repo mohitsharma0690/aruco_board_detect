@@ -20,7 +20,8 @@
 #include "image_transport/image_transport.h"
 #include "cv_bridge/cv_bridge.h"
 
-#include "aruco/Marker.h"
+#include "aruco_board/Marker.h"
+#include "aruco_board/MarkerImageInfo.h"
 
 #include "../ArucoMarker.cpp"
 #include "../ArucoMarkerInfo.cpp"
@@ -56,6 +57,9 @@ ros::Publisher pub_visible;
  * ROS node position publisher.
  */
 ros::Publisher pub_position;
+
+// MS: marker info pub.
+ros::Publisher pub_marker_info;
 
 /**
  * ROS node rotation publisher.
@@ -146,6 +150,7 @@ void drawText(Mat frame, string text, Point point)
  */
 void onFrame(const sensor_msgs::ImageConstPtr& msg)
 {
+	ROS_INFO("onFrame");
 	try
 	{
 		
@@ -197,9 +202,21 @@ void onFrame(const sensor_msgs::ImageConstPtr& msg)
 			ArucoDetector::drawMarkers(frame, markers, calibration, distortion);
 		}
 
+		for(size_t i = 0; i < markers.size(); i++) {
+			aruco_board::MarkerImageInfo info;
+			info.id = markers[i].id;
+			info.c0_x = markers[i].projected[0].x;
+			info.c0_y = markers[i].projected[0].y;
+			info.c1_x = markers[i].projected[1].x;
+			info.c1_y = markers[i].projected[1].y;
+			pub_marker_info.publish(info);
+		}
+
 		//Check if any marker was found
 		if(world.size() > 0)
 		{
+			ROS_INFO("Marker found");
+
 			//Calculate position and rotation
 			Mat rotation, position;
 
@@ -398,7 +415,7 @@ void onCameraInfo(const sensor_msgs::CameraInfo &msg)
  * Callback to register markers on the marker list.
  * This callback received a custom marker message.
  */
-void onMarkerRegister(const aruco::Marker &msg)
+void onMarkerRegister(const aruco_board::Marker &msg)
 {
 	for(unsigned int i = 0; i < known.size(); i++)
 	{
@@ -477,10 +494,13 @@ void stringToDoubleArray(string data, double* values, unsigned int count, string
  */
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, "aruco");
+	ros::init(argc, argv, "aruco_board");
 
 	//ROS node instance
-	ros::NodeHandle node("aruco");
+	ros::NodeHandle node("aruco_board");
+
+	ROS_INFO("Hello world");
+	ROS_DEBUG("work");
 	
 	//Parameters
 	node.param<bool>("debug", debug, false);
@@ -560,6 +580,13 @@ int main(int argc, char **argv)
 			}
 		}
 	}
+	vector<int> marker_id{460, 312, 996, 577, 452, 477, 550, 745, 84, 363, 700, 97, 38, 
+						  120, 387, 102, 413, 396, 987, 709};
+
+    for (size_t i = 0; i < marker_id.size(); i++) {
+		ArucoMarkerInfo info = ArucoMarkerInfo();
+		info.id = marker_id[i];
+	}
 
 	//Print all known markers
 	if(debug)
@@ -572,10 +599,15 @@ int main(int argc, char **argv)
 
 	//Subscribed topic names
 	string topic_camera, topic_camera_info, topic_marker_register, topic_marker_remove;
-	node.param<string>("topic_camera", topic_camera, "/rgb/image");
-	node.param<string>("topic_camera_info", topic_camera_info, "/rgb/camera_info");
+	node.param<string>("topic_camera", topic_camera, "/camera/rgb/image_raw");
+	node.param<string>("topic_camera_info", topic_camera_info, "/camera/rgb/camera_info");
 	node.param<string>("topic_marker_register", topic_marker_register, "/marker_register");
 	node.param<string>("topic_marker_remove", topic_marker_register, "/marker_remove");
+
+	if (!node.hasParam("topic_camera")) {
+		ROS_ERROR("camera topic not found");
+		assert(2 > 3);
+	}
 
 	//Publish topic names
 	string topic_visible, topic_position, topic_rotation, topic_pose;
@@ -589,6 +621,7 @@ int main(int argc, char **argv)
 	pub_position = node.advertise<geometry_msgs::Point>(node.getNamespace() + topic_position, 10);
 	pub_rotation = node.advertise<geometry_msgs::Point>(node.getNamespace() + topic_rotation, 10);
 	pub_pose = node.advertise<geometry_msgs::PoseStamped>(node.getNamespace() + topic_pose, 10);
+	pub_marker_info = node.advertise<aruco_board::MarkerImageInfo>(node.getNamespace() + "/marker_info", 100);
 
 	//Subscribe topics
 	image_transport::ImageTransport it(node);

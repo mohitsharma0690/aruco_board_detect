@@ -1,7 +1,7 @@
 <launch> 
-	<node pkg="aruco" type="aruco" name="aruco"> 
+	<node pkg="aruco_board" type="aruco_board" name="aruco_board_overhead"> 
 		<!--Detector-->
-		<param name="debug" value="false"/>
+		<param name="debug" value="true"/>
 		<param name="cosine_limit" value="0.7"/>
 		<param name="theshold_block_size_min" value="3"/>
 		<param name="theshold_block_size_max" value="21"/>
@@ -13,7 +13,7 @@
 		<param name="marker123" value="0.2_0_0_0_0_0_0"/>
 		
 		<!--Camera-->
-		<param name="topic_camera"          value="/camera/rgb"/> 
-		<param name="topic_camera_info"    value="/camera/info"/>
+		<param name="topic_camera"          value="/overhead_kinect/rgb/image_raw"/> 
+		<param name="topic_camera_info"    value="/overhead_kinect/rgb/camera_info"/>
 	</node>
 </launch>
